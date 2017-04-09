@@ -1,6 +1,6 @@
 import kernel
 from parameters import generate_call
-from compile import *
+from cu_compile import *
 from functools import reduce
 from load_file import intern_file
 import sys
@@ -80,10 +80,10 @@ def parse_line(state, inp):
     return state
 
 def driver():
-    default = kernel.mk_kernel("default", "", "__global__")
+    default = kernel.mk_kernel("origin", "", "__global__")
     state = {i : getattr(kernel, i) for i in dir(kernel) if not i.startswith('__')}
     state["curnel"] = default
-    state["default"] = default
+    state["origin"] = default
 
     def help():
         return """
@@ -150,7 +150,8 @@ def driver():
     def save(path):
         try:
             with open(path, 'w') as f:
-                f.write('#include "cudaRuntime.h"\n')
+                f.write('#include <cuda_runtime.h>\n')
+                f.write('#include <stdio.h>\n')
                 for i in state:
                     if type(state[i]) == dict and i != 'curnel':
                         f.write(kernel.gen_code(state[i]))
@@ -178,10 +179,12 @@ def driver():
         ls, rs, cs = [], [], []
         try:
             with open(path, 'w') as f:
-                f.write('#include "cudaRuntime.h"\n')
+                f.write('#include <cuda_runtime.h>\n')
+                f.write('#include <stdio.h>\n')
                 for i in state:
                     if type(state[i]) == dict and i != 'curnel':
-                        f.write(kernel.gen_code(state[i]) + '\n')
+                        gen = kernel.gen_code(state[i])
+                        f.write(gen + ('\n' if not gen.endswith('\n') else ''))
                         l, r, c = generate_call(state[i])
                         ls.append(l)
                         rs.append(r)
@@ -199,9 +202,9 @@ def driver():
     def make(path):
         """Makes "makefile" for file at path."""
         try:
-            with open('makefile', 'w') as m:
+            with open('/'.join(path.split('/')[:-1]) + '/makefile', 'w') as m:
                 m.write("all: {0}\n\tnvcc {0} -o test".format(path))
-            return "Success!"
+            return "Success"
         except Exception as e:
             print(e)
             return "Error in IO."
@@ -240,6 +243,8 @@ def driver():
     state["gen_test_file"] = gen_test_file
     state["compile"] = compile
     state["run_from"] = run_from
+    state["dump_file"] = dump_file
+    state["make"] = make
 
     print(help())
     while state != None:

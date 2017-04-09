@@ -1,2 +1,2 @@
-all: test.cu
-	nvcc test.cu -o test
+all: ./test.cu
+	nvcc ./test.cu -o test

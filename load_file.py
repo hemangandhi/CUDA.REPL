@@ -26,9 +26,9 @@ def to_kernels(f):
         if l == -1:
             continue
         yield kernel.mk_kernel(f[l].split(' ')[2],
-                f[l][f[l].find('(') + 1:f[l].find(')')],
+                f[l][f[l].find('(') + 1:f[l].find(')')].strip(),
                 f[l].split(' ')[0],
-                f[l+1:r])
+                list(map(str.strip, f[l+1:r])))
 
 def intern_file(path):
     with open(path) as f:
