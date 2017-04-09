@@ -1,4 +1,6 @@
 import kernel
+from parameters import generate_call
+from compile import *
 from functools import reduce
 from load_file import intern_file
 import sys
@@ -82,7 +84,6 @@ def driver():
     state = {i : getattr(kernel, i) for i in dir(kernel) if not i.startswith('__')}
     state["curnel"] = default
     state["default"] = default
-    state["main_fn"] = ["int main(){"]
 
     def help():
         return """
@@ -149,6 +150,7 @@ def driver():
     def save(path):
         try:
             with open(path, 'w') as f:
+                f.write('#include "cudaRuntime.h"\n')
                 for i in state:
                     if type(state[i]) == dict and i != 'curnel':
                         f.write(kernel.gen_code(state[i]))
@@ -172,6 +174,61 @@ def driver():
         state['curnel'] = state[name]
         return state
 
+    def gen_test_file(path):
+        ls, rs, cs = [], [], []
+        try:
+            with open(path, 'w') as f:
+                f.write('#include "cudaRuntime.h"\n')
+                for i in state:
+                    if type(state[i]) == dict and i != 'curnel':
+                        f.write(kernel.gen_code(state[i]) + '\n')
+                        l, r, c = generate_call(state[i])
+                        ls.append(l)
+                        rs.append(r)
+                        cs.append(c)
+                lj = '\n'.join(ls)
+                rj = '\n'.join(rs)
+                cj = '\n'.join(cs)
+                f.write('\n'.join(['int main(){', lj, cj, rj, '}']))
+                f.flush()
+                return "Saved to " + path
+        except Exception as e:
+            print(e)
+            return "Error in writing"
+
+    def make(path):
+        """Makes "makefile" for file at path."""
+        try:
+            with open('makefile', 'w') as m:
+                m.write("all: {0}\n\tnvcc {0} -o test".format(path))
+            return "Success!"
+        except Exception as e:
+            print(e)
+            return "Error in IO."
+
+    def dump_file(path):
+        """Print the contents of a file."""
+        try:
+            with open(path) as m:
+                return m.read() + '\n'
+        except Exception as e:
+            print(e)
+            return "Error in IO."
+
+    def compile(path = None):
+        if path is None:
+            path = '/tmp/test.cu'
+        if gen_test_file(path).startswith("Saved to") and make(path) == "Success":
+            return run_make('/'.join(path.split('/')[:-1]))
+        return "Files not found"
+
+    def run_from(path=None):
+        if compile(path) == "Success":
+            return run_progn()
+        else:
+            return "Compilation of compilation issues."
+
+
     state["mk_kernel"] = mk_kernel
     state["alter_kernel"] = alter_kernel
     state["exit"] = exit
@@ -180,6 +237,9 @@ def driver():
     state["rm_kernel"] = rm_kernel
     state["save"] = save
     state["load"] = load
+    state["gen_test_file"] = gen_test_file
+    state["compile"] = compile
+    state["run_from"] = run_from
 
     print(help())
     while state != None:

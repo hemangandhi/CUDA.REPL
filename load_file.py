@@ -25,7 +25,7 @@ def to_kernels(f):
         l = guess_if_kernel(f, l)
         if l == -1:
             continue
-        yield kernel.mk_kernel(f[l].split(' ')[1],
+        yield kernel.mk_kernel(f[l].split(' ')[2],
                 f[l][f[l].find('(') + 1:f[l].find(')')],
                 f[l].split(' ')[0],
                 f[l+1:r])
