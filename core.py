@@ -1,5 +1,6 @@
 import kernel
 from functools import reduce
+from load_file import intern_file
 import sys
 
 def prompt(kernel,end=" > "):
@@ -56,7 +57,11 @@ def eval_cmd(state, cmd):
         return parse_args_and_apply(where, toks[1:], toks[0], state)
     else:
         if hasattr(where, '__call__'):
-            return where()
+            try:
+                return where()
+            except Exception as e:
+                print(e)
+                return "Looks like you need parameters! %" + toks[0] + "._ for details!"
         else:
             return where
 
@@ -77,6 +82,7 @@ def driver():
     state = {i : getattr(kernel, i) for i in dir(kernel) if not i.startswith('__')}
     state["curnel"] = default
     state["default"] = default
+    state["main_fn"] = ["int main(){"]
 
     def help():
         return """
@@ -124,19 +130,47 @@ def driver():
     def alter_kernel(kernel, what, new):
         """Alters the name, access, and types of a kernel."""
         nonlocal state
-        if what not in ["name", "access", "type"]:
+        if what not in ["name", "access", "types"]:
             return "Cannot alter "+ what + " in this way."
         if what == 'name':
             old = kernel['name']
             kernel['name'] = new
-            state[what] = kernel
+            state[new] = kernel
             del state[old]
+            if state['curnel']['name'] == old:
+                state['curnel'] = kernel
             return state
         elif what == 'access' and new not in ['__global__', '__host__', '__device__']:
             return 'Cannot set to this type'
         else:
-            kernel[what] = new
+            kernel[what] = new.replace('"', '')
             return state
+
+    def save(path):
+        try:
+            with open(path, 'w') as f:
+                for i in state:
+                    if type(state[i]) == dict and i != 'curnel':
+                        f.write(kernel.gen_code(state[i]))
+                f.flush()
+                return "Saved to " + path
+        except Exception as e:
+            print(e)
+            return "Error in writing"
+
+    def load(path):
+        for i in intern_file(path):
+            state[i['name']] = i
+            state['curnel'] = i
+        print("Warning: loaded code will not reflect the entire file, only the kernels")
+        print("Saving will overwrite potentially important code.")
+        return state
+
+    def ch_kernel(name):
+        if name not in state or type(state[name]) != dict:
+            return "Invalid transfer"
+        state['curnel'] = state[name]
+        return state
 
     state["mk_kernel"] = mk_kernel
     state["alter_kernel"] = alter_kernel
@@ -144,7 +178,10 @@ def driver():
     state["ls"] = ls
     state["help"] = help
     state["rm_kernel"] = rm_kernel
+    state["save"] = save
+    state["load"] = load
 
+    print(help())
     while state != None:
         state = parse_line(state, prompt(state["curnel"]))
 
