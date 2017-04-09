@@ -148,6 +148,7 @@ def driver():
             return state
 
     def save(path):
+        """Saves to path. Overwrites."""
         try:
             with open(path, 'w') as f:
                 f.write('#include <cuda_runtime.h>\n')
@@ -162,6 +163,7 @@ def driver():
             return "Error in writing"
 
     def load(path):
+        """Loads kernels from path. Will ignore non-kernel code."""
         for i in intern_file(path):
             state[i['name']] = i
             state['curnel'] = i
@@ -170,12 +172,14 @@ def driver():
         return state
 
     def ch_kernel(name):
+        """Alter the kernel being modified by 'curnel'"""
         if name not in state or type(state[name]) != dict:
             return "Invalid transfer"
         state['curnel'] = state[name]
         return state
 
     def gen_test_file(path):
+        """Generates a complete test file, as ready for compilation as your code."""
         ls, rs, cs = [], [], []
         try:
             with open(path, 'w') as f:
@@ -219,6 +223,7 @@ def driver():
             return "Error in IO."
 
     def compile(path = None):
+        """Makes the program at path. All output is from GNU/make"""
         if path is None:
             path = '/tmp/test.cu'
         if gen_test_file(path).startswith("Saved to") and make(path) == "Success":
@@ -226,6 +231,7 @@ def driver():
         return "Files not found"
 
     def run_from(path=None):
+        """Saves, compiles and runs a particular file."""
         if compile(path) == "Success":
             return run_progn()
         else:
