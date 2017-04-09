@@ -34,7 +34,7 @@ def is_arr_spec(spc):
 
 def gen_const(param, speced):
     names = {i[1]: i[3][2] for i in list(filter(is_arr_spec, speced))}
-    value = input("Enter the constant value. A choice of " + str(list(names.keys())) + " is possible.")
+    value = input("Enter the constant value. A choice of " + str(list(names.keys())) + " is possible. > ")
     if value in names:
         value = str(names[value])
     return value
@@ -62,7 +62,6 @@ def specify_params(kernel):
         else:
             names[who][3] = gen_const(names[who][0], speced)
             speced.append(names[who])
-        print(params)
     return speced
 
 def generate_call(kernel):
